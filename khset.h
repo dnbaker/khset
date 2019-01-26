@@ -92,9 +92,17 @@ struct is_map<std::unordered_map<Key, T, Hash, Compare, Allocator>> {static cons
 
 #define DECLARE_KHSET(name, nbits) \
 struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
+    using key_type = typename std::decay<decltype(*keys)>::type;\
     khset##nbits##_t() {std::memset(this, 0, sizeof(*this));}\
     khset##nbits##_t(size_t reserve_size) {std::memset(this, 0, sizeof(*this)); reserve(reserve_size);}\
     ~khset##nbits##_t() {std::free(this->flags); std::free(this->keys);}\
+    khset##nbits##_t(const std::string path) {\
+        std::memset(this, 0, sizeof(*this));\
+        gzFile fp = gzopen(path.data(), "rb");\
+        if(fp == nullptr) throw std::runtime_error("Could not open file");\
+        this->read(fp);\
+        gzclose(fp);\
+    }\
     KH_COPY_DEC(khset##nbits##_t)\
     KH_MOVE_DEC(khset##nbits##_t)\
     /* For each*/ \
@@ -120,6 +128,26 @@ struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
     template<typename ItType, typename ItType2>\
     void insert(ItType i1, ItType2 i2) {\
         while(i1 != i2) insert(*i1++);\
+    }\
+    void write(const char *path, int comp=6) const {\
+        std::string fmt = "w";\
+        if(comp == 0) fmt += 'T';\
+        else fmt += 'b', fmt += std::to_string(comp % 10);\
+        gzFile fp = gzopen(path, fmt.data());\
+        if(fp == nullptr) throw std::runtime_error("Could not open file");\
+        this->write(fp);\
+        gzclose(fp);\
+    }\
+    void write(gzFile fp) const {\
+        gzwrite(fp, this, sizeof(*this));\
+        gzwrite(fp, this->flags, __ac_fsize(this->n_buckets) * sizeof(uint32_t));\
+        gzwrite(fp, this->keys, sizeof(key_type) * this->n_buckets);\
+    }\
+    void read(gzFile fp) {\
+        gzread(fp, this, sizeof(*this));\
+        size_t sz = this->n_buckets;\
+        this->flags = static_cast<uint32_t *>(std::malloc(__ac_fsize(sz) * sizeof(uint32_t)));\
+        this->keys = static_cast<key_type *>(std::malloc(sz* sizeof(key_type)));\
     }\
     void clear() {kh_clear(name, this);}\
     bool contains(u##nbits x) const {return get(x) != kh_end(this);}\
