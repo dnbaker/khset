@@ -93,11 +93,15 @@ struct is_map<std::unordered_map<Key, T, Hash, Compare, Allocator>> {static cons
 #define DECLARE_KHSET(name, nbits) \
 struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
     khset##nbits##_t() {std::memset(this, 0, sizeof(*this));}\
+    khset##nbits##_t(size_t reserve_size) {std::memset(this, 0, sizeof(*this)); reserve(reserve_size);}\
     ~khset##nbits##_t() {std::free(this->flags); std::free(this->keys);}\
     KH_COPY_DEC(khset##nbits##_t)\
     KH_MOVE_DEC(khset##nbits##_t)\
     /* For each*/ \
     __FE__\
+    void swap(khset##nbits##_t &other) {\
+        std::swap_ranges(reinterpret_cast<uint8_t *>(this), reinterpret_cast<uint8_t *>(this) + sizeof(*this), reinterpret_cast<uint8_t *>(std::addressof(other)));\
+    }\
     operator khash_t(name) &() {return *reinterpret_cast<khash_t(name) *>(this);}\
     operator khash_t(name) *() {return reinterpret_cast<khash_t(name) *>(this);}\
     operator const khash_t(name) &() const {return *reinterpret_cast<const khash_t(name) *>(this);}\
@@ -122,7 +126,10 @@ struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
     size_t size() const {return kh_size(static_cast<const khash_t(name) *>(this));}\
     size_t capacity() const {return this->n_buckets;}\
     void reserve(size_t sz) {if(kh_resize(name, this, sz) < 0) throw std::bad_alloc();}\
-};
+}; \
+void swap(khset##nbits##_t &a, khset##nbits##_t &b) {\
+    a.swap(b);\
+}
 
 DECLARE_KHSET(set, 32)
 DECLARE_KHSET(set64, 64)
