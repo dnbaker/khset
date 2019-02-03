@@ -9,6 +9,13 @@
 #include <unordered_set>
 #include "klib/khash.h"
 
+#ifndef CONST_IF
+#  if __cplusplus >= 201703L
+#    define CONST_IF if constexpr
+#  else
+#    define CONST_IF if
+#  endif
+#endif
 
 namespace kh {
 
@@ -34,9 +41,8 @@ struct EmptyKhMap: public EmptyKhBase {};
 #define IS_KH_DEC(kh, type) \
 template<typename T>\
 struct is_##kh {\
-    static constexpr bool value = std::is_base_of_v<type, T>;\
-};\
-template<typename T> inline constexpr bool is_##kh##_v = is_##kh<T>::value;
+    static constexpr bool value = std::is_base_of<type, T>::value;\
+};
 
 IS_KH_DEC(kh, EmptyKhBase)
 IS_KH_DEC(set, EmptyKhSet)
@@ -83,7 +89,7 @@ struct is_map<std::unordered_map<Key, T, Hash, Compare, Allocator>> {static cons
             flags = static_cast<u32 *>(std::malloc(memsz));\
             if(!flags) throw std::bad_alloc();\
             std::memcpy(flags, other.flags, memsz);\
-            if constexpr(::kh::is_map_v<std::decay_t<decltype(*this)>>)\
+            CONST_IF(::kh::is_map<typename std::decay<decltype(*this)>::type>::value)\
                 std::memcpy(vals, other.vals, other.capacity() * sizeof(*vals));\
         } else std::memset(this, 0, sizeof(*this));\
     }
@@ -122,7 +128,7 @@ struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
     }\
     auto get(u##nbits x) const {return kh_get(name, this, x);}\
     auto erase(u##nbits val) {\
-        if(auto it = get(val); it != capacity())\
+        auto it = get(val); if(it != capacity())\
             kh_del(name, this, it);\
     }\
     template<typename ItType, typename ItType2>\
@@ -194,7 +200,8 @@ struct khset_cstr_t: EmptyKhSet, khash_t(cs) {
         return kh_get(cs, this, s);
     }
     auto del(const char *s) {
-        if(auto it = get(s); it != capacity()) std::free(const_cast<char *>(this->keys[it]));
+        auto it;
+        if(it != capacity()) std::free(const_cast<char *>(this->keys[it]));
     }
     khiter_t insert(const char *s) {return this->insert(s, std::strlen(s));}
     khiter_t insert(const char *s, size_t l) {
@@ -237,7 +244,7 @@ struct khmap_##name##_t: EmptyKhSet, khash_t(name) {\
     using value_type = std::decay_t<decltype(*vals)>;\
     khmap_##name##_t() {std::memset(this, 0, sizeof(*this));}\
     ~khmap_##name##_t() {\
-        if constexpr(!std::is_trivially_destructible_v<value_type>) {\
+        CONST_IF(!std::is_trivially_destructible<value_type>::value) {\
             /* call destructors if necessary */\
             this->for_each_val([](auto &v) {v.~value_type();});\
         }\
