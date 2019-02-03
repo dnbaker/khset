@@ -200,7 +200,7 @@ struct khset_cstr_t: EmptyKhSet, khash_t(cs) {
         return kh_get(cs, this, s);
     }
     auto del(const char *s) {
-        auto it;
+        auto it = get(s);
         if(it != capacity()) std::free(const_cast<char *>(this->keys[it]));
     }
     khiter_t insert(const char *s) {return this->insert(s, std::strlen(s));}
