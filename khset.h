@@ -11,9 +11,9 @@
 
 #ifndef CONST_IF
 #  if __cplusplus >= 201703L
-#    define CONST_IF if constexpr
+#    define CONST_IF(x) if constexpr(x)
 #  else
-#    define CONST_IF if
+#    define CONST_IF(x) if(x)
 #  endif
 #endif
 
@@ -89,7 +89,7 @@ struct is_map<std::unordered_map<Key, T, Hash, Compare, Allocator>> {static cons
             flags = static_cast<u32 *>(std::malloc(memsz));\
             if(!flags) throw std::bad_alloc();\
             std::memcpy(flags, other.flags, memsz);\
-            CONST_IF(::kh::is_map<typename std::decay<decltype(*this)>::type>::value)\
+            CONST_IF(::kh::is_map<std::decay_t<decltype(*this)>>::value)\
                 std::memcpy(vals, other.vals, other.capacity() * sizeof(*vals));\
         } else std::memset(this, 0, sizeof(*this));\
     }
