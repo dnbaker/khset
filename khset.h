@@ -8,6 +8,7 @@
 #include <set>
 #include <unordered_set>
 #include "klib/khash.h"
+#include "zlib.h"
 
 #ifndef CONST_IF
 #  if __cplusplus >= 201703L
@@ -127,7 +128,7 @@ struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
         return kh_put(name, this, val, &khr);\
     }\
     auto get(u##nbits x) const {return kh_get(name, this, x);}\
-    auto erase(u##nbits val) {\
+    void erase(u##nbits val) {\
         auto it = get(val); if(it != capacity())\
             kh_del(name, this, it);\
     }\
@@ -135,25 +136,30 @@ struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
     void insert(ItType i1, ItType2 i2) {\
         while(i1 != i2) insert(*i1++);\
     }\
-    void write(const char *path, int comp=6) const {\
+    ssize_t write(const char *path, int comp=6) const {\
         std::string fmt = "w";\
         if(comp == 0) fmt += 'T';\
         else fmt += 'b', fmt += std::to_string(comp % 10);\
         gzFile fp = gzopen(path, fmt.data());\
         if(fp == nullptr) throw std::runtime_error("Could not open file");\
-        this->write(fp);\
+        auto ret = this->write(fp);\
         gzclose(fp);\
+        return ret;\
     }\
-    void write(gzFile fp) const {\
-        gzwrite(fp, this, sizeof(*this));\
-        gzwrite(fp, this->flags, __ac_fsize(this->n_buckets) * sizeof(uint32_t));\
-        gzwrite(fp, this->keys, sizeof(key_type) * this->n_buckets);\
+    ssize_t write(gzFile fp) const {\
+        ssize_t ret = gzwrite(fp, this, sizeof(*this));\
+        ret += gzwrite(fp, this->flags, __ac_fsize(this->n_buckets) * sizeof(uint32_t));\
+        return ret += gzwrite(fp, this->keys, sizeof(key_type) * this->n_buckets);\
     }\
-    void read(gzFile fp) {\
-        gzread(fp, this, sizeof(*this));\
+    ssize_t read(gzFile fp) {\
+        ssize_t ret = gzread(fp, this, sizeof(*this));\
         size_t sz = this->n_buckets;\
         this->flags = static_cast<uint32_t *>(std::malloc(__ac_fsize(sz) * sizeof(uint32_t)));\
+        ret += gzread(fp, this->flags, __ac_fsize(sz) * sizeof(uint32_t));\
         this->keys = static_cast<key_type *>(std::malloc(sz* sizeof(key_type)));\
+        ret += gzread(fp, this->keys, sz * sizeof(*this->keys));\
+        this->vals = nullptr;\
+        return ret;\
     }\
     void clear() {kh_clear(name, this);}\
     bool contains(u##nbits x) const {return get(x) != kh_end(this);}\
@@ -242,6 +248,7 @@ Note:
 init_statement(name, VType)\
 struct khmap_##name##_t: EmptyKhSet, khash_t(name) {\
     using value_type = std::decay_t<decltype(*vals)>;\
+    using key_type = std::decay_t<decltype(*keys)>;\
     khmap_##name##_t() {std::memset(this, 0, sizeof(*this));}\
     ~khmap_##name##_t() {\
         CONST_IF(!std::is_trivially_destructible<value_type>::value) {\
@@ -255,29 +262,27 @@ struct khmap_##name##_t: EmptyKhSet, khash_t(name) {\
     /* For each*/ \
     template<typename Func>\
     void for_each(const Func &func) {\
-        /* Give up the funk! */ \
-        /* We gotta have that funk!! */ \
+        /* Give up the func! */ \
+        /* We gotta have that func!! */ \
         for(khiter_t ki = 0; ki < this->n_buckets; ++ki)\
             if(kh_exist(this, ki))\
                 func(this->keys[ki], this->vals[ki]);\
     }\
     template<typename Func>\
     void for_each_key(const Func &func) {\
-        /* Give up the funk! */ \
-        /* We gotta have that funk!! */ \
+        /* Play the func-y music, white boy */ \
         for(khiter_t ki = 0; ki < this->n_buckets; ++ki)\
             if(kh_exist(this, ki))\
                 func(this->keys[ki]);\
     }\
     void destroy_at(khint_t ki) {throw std::runtime_error("NotImplemented");}\
     void del(khint_t ki) {\
+        /* Still chunky but func-y */ \
         destroy_at(ki);\
-        return kh_del_##name(this, ki);\
+        kh_del_##name(this, ki);\
     }\
     template<typename Func>\
     void for_each_val(const Func &func) {\
-        /* Give up the funk! */ \
-        /* We gotta have that funk!! */ \
         for(khiter_t ki = 0; ki < this->n_buckets; ++ki)\
             if(kh_exist(this, ki))\
                 func(this->vals[ki]);\
@@ -305,6 +310,22 @@ struct khmap_##name##_t: EmptyKhSet, khash_t(name) {\
     size_t size() const {return kh_size(static_cast<const khash_t(name) *>(this));}\
     size_t capacity() const {return this->n_buckets;}\
     void reserve(size_t sz) {if(kh_resize(name, this, sz) < 0) throw std::bad_alloc();}\
+    ssize_t write(const char *path, int comp=6) const {\
+        std::string fmt = "w";\
+        if(comp == 0) fmt += 'T';\
+        else fmt += 'b', fmt += std::to_string(comp % 10);\
+        gzFile fp = gzopen(path, fmt.data());\
+        if(fp == nullptr) throw std::runtime_error("Could not open file");\
+        auto ret = this->write(fp);\
+        gzclose(fp);\
+        return ret;\
+    }/* note:  this assumes values are pod*/\
+    ssize_t write(gzFile fp) const {\
+        ssize_t ret = gzwrite(fp, this, sizeof(*this));\
+        ret += gzwrite(fp, this->flags, __ac_fsize(this->n_buckets) * sizeof(uint32_t));\
+        ret += gzwrite(fp, this->keys, sizeof(key_type) * this->n_buckets);\
+        return ret += gzwrite(fp, this->vals, sizeof(value_type) * this->n_buckets);\
+    }\
 };
 
 #define DECLARE_KHMAP_32(name, VType) DECLARE_KHMAP(name, VType, KHASH_MAP_INIT_INT32, 32)

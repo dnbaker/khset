@@ -15,20 +15,27 @@ int main(int argc, char* argv[]) {
     std::fprintf(stderr, "size of khis: %zu\n", khis.size());
     khset64_t kh3(khis);
     assert(kh_size(kh3) == kh_size(khis));
-    assert(kh3->n_buckets == khis->n_buckets);
-    
-    //for(khiter_t ki(0); ki < kh_size(kh3); ++k) {
-    //}
-    assert(std::memcmp(kh3->flags, khis->flags, __ac_fsize(kh3->n_buckets) * sizeof(u32)) == 0);
-    assert(std::memcmp(kh3->keys, khis->keys, sizeof(u64) * kh3->n_buckets) == 0);
+#define ASSERT_STUFF(hash_set)\
+    assert(hash_set->n_buckets == khis->n_buckets);\
+    assert(std::memcmp(hash_set->flags, khis->flags, __ac_fsize(hash_set->n_buckets) * sizeof(u32)) == 0);\
+    assert(std::memcmp(hash_set->keys, khis->keys, sizeof(u64) * hash_set->n_buckets) == 0);\
+    assert(hash_set->vals == nullptr);
+    ASSERT_STUFF(kh3);
     std::fprintf(stderr, "size of khis: %zu\n", kh3.size());
     khis += kh3;
+    khis.write("tmp.khs");
+    khset64_t read_from_file("tmp.khs");
+    ASSERT_STUFF(read_from_file);
     {
         std::vector<u64> vals;
-        vals.reserve(khis.size());
-        for(khiter_t ki = 0; ki < kh_end(khis); ++ki) {
-            
+        vals.reserve(read_from_file.size());
+        size_t n_in_map = 0;
+        for(khiter_t ki = 0; ki < kh_end(read_from_file); ++ki) {
+            if(!kh_exist(read_from_file, ki)) continue;
+            ++n_in_map;
+            assert(khis.contains(kh_key(read_from_file, ki)));
         }
+        assert(n_in_map == kh_size(read_from_file));
     }
     std::fprintf(stderr, "size of khis: %zu\n", khis.size());
     khset_cstr_t cset;
@@ -45,10 +52,8 @@ int main(int argc, char* argv[]) {
     kmap.insert(13, 1337);
     kmap.insert(1337, 13);
     kmap.for_each([](auto x, auto y) {std::fprintf(stderr, "Key %zu has value %zu\n", size_t(x), size_t(y));});
-    kh_write(64, kmap, stdout);
-    kh_serialize(64, kmap, "Thisfile.txt");
-    auto m = kh_deserialize(64, "Thisfile.txt");
-    ::std::free(m->keys);
-    ::std::free(m->flags);
-    ::std::free(m->vals);
+    kmap.write("Thisfile.txt");
+    khset64_t m("Thisfile.txt");
+    assert(m.size() == kmap.size());
+    assert(m.capacity() == kmap.capacity());
 }
