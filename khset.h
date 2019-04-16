@@ -95,6 +95,27 @@ struct is_map<std::unordered_map<Key, T, Hash, Compare, Allocator>> {static cons
         } else std::memset(this, 0, sizeof(*this));\
     }
 
+#define KH_ASSIGN_DEC(t) \
+    t &operator=(const t &other) {\
+        if(std::addressof(other) == this) return *this;\
+        auto memsz = other.capacity() * sizeof(*keys);\
+        auto tmpkeys = keys;\
+        auto tmpflags = flags;\
+        std::memcpy(this, &other, sizeof(*this));\
+        keys = tmpkeys;\
+        flags = tmpflags;\
+        keys = static_cast<decltype(keys)>(std::realloc(keys, memsz));\
+        std::memcpy(keys, other.keys, sizeof(*keys) * other.n_buckets);\
+        flags = static_cast<decltype(flags)>(std::realloc(flags, __ac_fsize(other.capacity() * sizeof(uint32_t))));\
+        std::memcpy(flags, other.flags, sizeof(*flags) * other.n_buckets);\
+        return *this;\
+    }\
+    t &operator=(t &&other) {\
+        if(flags) std::free(flags);\
+        if(keys) std::free(keys);\
+        std::memcpy(this, &other, sizeof(*this)); std::memset(&other, 0, sizeof(other));\
+        return *this;\
+    }
 
 
 #define DECLARE_KHSET(name, nbits) \
@@ -112,6 +133,7 @@ struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
     }\
     KH_COPY_DEC(khset##nbits##_t)\
     KH_MOVE_DEC(khset##nbits##_t)\
+    KH_ASSIGN_DEC(khset##nbits##_t)\
     /* For each*/ \
     __FE__\
     void swap(khset##nbits##_t &other) {\

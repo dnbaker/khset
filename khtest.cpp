@@ -56,4 +56,5 @@ int main(int argc, char* argv[]) {
     khset64_t m("Thisfile.txt");
     assert(m.size() == kmap.size());
     assert(m.capacity() == kmap.capacity());
+    m = khis;
 }
