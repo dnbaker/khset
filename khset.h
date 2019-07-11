@@ -7,8 +7,8 @@
 #include <unordered_map>
 #include <set>
 #include <unordered_set>
-#include "klib/khash.h"
 #include "zlib.h"
+#include "khash64.h"
 
 #ifndef CONST_IF
 #  if __cplusplus >= 201703L
