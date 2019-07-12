@@ -653,13 +653,6 @@ static kh_inline khint_t __ac_Wang_hash(khint_t key)
 
 
 
-/*! @function
-  @abstract	 Instantiate a hash map containing 64-bit integer keys
-  @param  name  Name of the hash table [symbol]
-  @param  khval_t  Type of values [type]
-*/
-#endif
-
 typedef const char *kh_cstr_t;
 /*! @function
   @abstract	 Instantiate a hash map containing const char* keys
