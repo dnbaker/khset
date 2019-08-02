@@ -11,11 +11,11 @@
 #include "khash64.h"
 
 #ifndef CONST_IF
-#  if __cplusplus >= 201703L
-#    define CONST_IF(x) if constexpr(x)
-#  else
-#    define CONST_IF(x) if(x)
-#  endif
+#if __cplusplus >= 201703L
+#define CONST_IF(...) if constexpr(__VA_ARGS__)
+#else
+#define CONST_IF(...) if(__VA_ARGS__)
+#endif
 #endif
 
 namespace kh {
