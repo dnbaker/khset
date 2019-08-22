@@ -24,7 +24,10 @@ int main(int argc, char* argv[]) {
     std::fprintf(stderr, "size of khis: %zu\n", kh3.size());
     khis += kh3;
     khis.write("tmp.khs");
-    khset64_t read_from_file("tmp.khs");
+    khset64_t read_from_file;
+    gzFile t = gzopen("tmp.khs", "rb");
+    read_from_file.read(t);
+    gzclose(t);
     ASSERT_STUFF(read_from_file);
     {
         std::vector<u64> vals;

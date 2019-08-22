@@ -123,7 +123,12 @@ struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
     using key_type = typename std::decay<decltype(*keys)>::type;\
     khset##nbits##_t() {std::memset(this, 0, sizeof(*this));}\
     khset##nbits##_t(size_t reserve_size) {std::memset(this, 0, sizeof(*this)); reserve(reserve_size);}\
-    ~khset##nbits##_t() {std::free(this->flags); std::free(this->keys);}\
+    ~khset##nbits##_t() {\
+        std::free(this->flags);\
+        std::free(this->keys);\
+        this->flags = nullptr;\
+        this->keys = nullptr;\
+    }\
     khset##nbits##_t(const std::string path) {\
         std::memset(this, 0, sizeof(*this));\
         gzFile fp = gzopen(path.data(), "rb");\
@@ -139,9 +144,7 @@ struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
     void swap(khset##nbits##_t &other) {\
         std::swap_ranges(reinterpret_cast<uint8_t *>(this), reinterpret_cast<uint8_t *>(this) + sizeof(*this), reinterpret_cast<uint8_t *>(std::addressof(other)));\
     }\
-    operator khash_t(name) &() {return *reinterpret_cast<khash_t(name) *>(this);}\
     operator khash_t(name) *() {return reinterpret_cast<khash_t(name) *>(this);}\
-    operator const khash_t(name) &() const {return *reinterpret_cast<const khash_t(name) *>(this);}\
     operator const khash_t(name) *() const {return reinterpret_cast<const khash_t(name) *>(this);}\
     khash_t(name) *operator->() {return static_cast<khash_t(name) *>(*this);}\
     const khash_t(name) *operator->() const {return static_cast<const khash_t(name) *>(*this);}\
@@ -189,7 +192,7 @@ struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
     size_t capacity() const {return this->n_buckets;}\
     void reserve(size_t sz) {if(kh_resize(name, this, sz) < 0) throw std::bad_alloc();}\
 }; \
-void swap(khset##nbits##_t &a, khset##nbits##_t &b) {\
+static void swap(khset##nbits##_t &a, khset##nbits##_t &b) {\
     a.swap(b);\
 }
 
@@ -206,9 +209,7 @@ struct khset_cstr_t: EmptyKhSet, khash_t(cs) {
     KH_MOVE_DEC(khset_cstr_t)
     /* For each*/
     __FE__
-    operator khash_t(cs) &() {return *reinterpret_cast<khash_t(cs) *>(this);}
     operator khash_t(cs) *() {return reinterpret_cast<khash_t(cs) *>(this);}
-    operator const khash_t(cs) &() const {return *reinterpret_cast<const khash_t(cs) *>(this);}
     operator const khash_t(cs) *() const {return reinterpret_cast<const khash_t(cs) *>(this);}
     khash_t(cs) *operator->() {return static_cast<khash_t(cs) *>(*this);}
     const khash_t(cs) *operator->() const {return static_cast<const khash_t(cs) *>(*this);}
@@ -321,9 +322,7 @@ struct khmap_##name##_t: EmptyKhSet, khash_t(name) {\
         vals[ret] = val;\
     }\
     \
-    operator khash_t(name) &() {return *reinterpret_cast<khash_t(name) *>(this);}\
     operator khash_t(name) *() {return reinterpret_cast<khash_t(name) *>(this);}\
-    operator const khash_t(name) &() const {return *reinterpret_cast<const khash_t(name) *>(this);}\
     operator const khash_t(name) *() const {return reinterpret_cast<const khash_t(name) *>(this);}\
     khash_t(name) *operator->() {return static_cast<khash_t(name) *>(*this);}\
     const khash_t(name) *operator->() const {return static_cast<const khash_t(name) *>(*this);}\
