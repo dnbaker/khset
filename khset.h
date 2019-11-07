@@ -129,6 +129,9 @@ struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
         this->flags = nullptr;\
         this->keys = nullptr;\
     }\
+    khset##nbits##_t(gzFile fp): khash_t(name){0,0,0,0,0,0,0} {\
+        this->read(fp);\
+    }\
     khset##nbits##_t(const std::string path) {\
         std::memset(this, 0, sizeof(*this));\
         gzFile fp = gzopen(path.data(), "rb");\
