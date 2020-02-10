@@ -76,7 +76,9 @@ struct is_map<std::unordered_map<Key, T, Hash, Compare, Allocator>> {static cons
 
 // Steal everything, take no prisoners.
 #define KH_MOVE_DEC(t) \
-   t(t &&other) {std::memcpy(this, &other, sizeof(*this)); std::memset(&other, 0, sizeof(other));}
+   t(t &&other): base_type{0, 0, 0, 0, 0, 0, 0} {\
+        std::swap_ranges((uint8_t *)this, (uint8_t *)this + sizeof(*this), (uint8_t *)&other);\
+    }
 
 #define KH_COPY_DEC(t) \
     t(const t &other) {\
@@ -121,13 +123,15 @@ struct is_map<std::unordered_map<Key, T, Hash, Compare, Allocator>> {static cons
     t &operator=(t &&other) {\
         if(flags) std::free(flags);\
         if(keys) std::free(keys);\
-        std::memcpy(this, &other, sizeof(*this)); std::memset(&other, 0, sizeof(other));\
+        *reinterpret_cast<base_type *>(this) = base_type{0, 0, 0, 0, 0, 0, 0};\
+        std::swap_ranges(reinterpret_cast<uint8_t *>(this), reinterpret_cast<uint8_t *>(this) + sizeof(*this), reinterpret_cast<uint8_t *>(std::addressof(other)));\
         return *this;\
     }
 
 
 #define DECLARE_KHSET(name, nbits) \
 struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
+    using base_type = khash_t(name);\
     using key_type = typename std::decay<decltype(*keys)>::type;\
     khset##nbits##_t() {std::memset(this, 0, sizeof(*this));}\
     khset##nbits##_t(size_t reserve_size) {std::memset(this, 0, sizeof(*this)); reserve(reserve_size);}\
@@ -211,6 +215,7 @@ DECLARE_KHSET(set, 32)
 DECLARE_KHSET(set64, 64)
 #undef DECLARE_KHSET
 struct khset_cstr_t: EmptyKhSet, khash_t(cs) {
+    using base_type = khash_t(cs);
     khset_cstr_t() {std::memset(this, 0, sizeof(*this));}
     ~khset_cstr_t() {
         this->for_each([](const char *s) {std::free(const_cast<char *>(s));});
@@ -281,6 +286,7 @@ Note:
 \
 init_statement(name, VType)\
 struct khmap_##name##_t: EmptyKhSet, khash_t(name) {\
+    using base_type = khash_t(name);\
     using value_type = std::decay_t<decltype(*vals)>;\
     using key_type = std::decay_t<decltype(*keys)>;\
     khmap_##name##_t() {std::memset(this, 0, sizeof(*this));}\
