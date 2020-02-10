@@ -94,7 +94,7 @@ struct is_map<std::unordered_map<Key, T, Hash, Compare, Allocator>> {static cons
             std::memcpy(flags, other.flags, memsz);\
             CONST_IF(::kh::is_map<std::decay_t<decltype(*this)>>::value)\
                 std::memcpy(vals, other.vals, other.capacity() * sizeof(*vals));\
-        } else std::memset(this, 0, sizeof(*this));\
+        } else zero();\
     }
 
 #if 0
@@ -133,8 +133,9 @@ struct is_map<std::unordered_map<Key, T, Hash, Compare, Allocator>> {static cons
 struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
     using base_type = khash_t(name);\
     using key_type = typename std::decay<decltype(*keys)>::type;\
-    khset##nbits##_t() {std::memset(this, 0, sizeof(*this));}\
-    khset##nbits##_t(size_t reserve_size) {std::memset(this, 0, sizeof(*this)); reserve(reserve_size);}\
+    void zero() {*reinterpret_cast<base_type *>(this) = base_type{0,0,0,0,0,0,0};}\
+    khset##nbits##_t() {zero();}\
+    khset##nbits##_t(size_t reserve_size) {zero(); reserve(reserve_size);}\
     ~khset##nbits##_t() {\
         std::free(this->flags);\
         std::free(this->keys);\
@@ -145,7 +146,6 @@ struct khset##nbits##_t: EmptyKhSet, khash_t(name) {\
         this->read(fp);\
     }\
     khset##nbits##_t(const std::string path) {\
-        std::memset(this, 0, sizeof(*this));\
         gzFile fp = gzopen(path.data(), "rb");\
         if(fp == nullptr) throw std::runtime_error("Could not open file");\
         this->read(fp);\
@@ -216,7 +216,8 @@ DECLARE_KHSET(set64, 64)
 #undef DECLARE_KHSET
 struct khset_cstr_t: EmptyKhSet, khash_t(cs) {
     using base_type = khash_t(cs);
-    khset_cstr_t() {std::memset(this, 0, sizeof(*this));}
+    void zero() {*reinterpret_cast<base_type *>(this) = base_type{0,0,0,0,0,0,0};}\
+    khset_cstr_t() {zero();}
     ~khset_cstr_t() {
         this->for_each([](const char *s) {std::free(const_cast<char *>(s));});
         std::free(this->flags); std::free(this->keys);
@@ -289,7 +290,8 @@ struct khmap_##name##_t: EmptyKhSet, khash_t(name) {\
     using base_type = khash_t(name);\
     using value_type = std::decay_t<decltype(*vals)>;\
     using key_type = std::decay_t<decltype(*keys)>;\
-    khmap_##name##_t() {std::memset(this, 0, sizeof(*this));}\
+    void zero() {*reinterpret_cast<base_type *>(this) = base_type{0,0,0,0,0,0,0};}\
+    khmap_##name##_t() {zero();}\
     ~khmap_##name##_t() {\
         CONST_IF(!std::is_trivially_destructible<value_type>::value) {\
             /* call destructors if necessary */\
