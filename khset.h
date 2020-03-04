@@ -76,7 +76,11 @@ struct is_map<std::unordered_map<Key, T, Hash, Compare, Allocator>> {static cons
 
 // Steal everything, take no prisoners.
 #define KH_MOVE_DEC(t) \
-   t(t &&other) {std::memcpy(this, &other, sizeof(*this)); std::memset(&other, 0, sizeof(other));}
+   t(t &&other) {\
+        auto start = reinterpret_cast<char *>(this);\
+        std::memset(start, 0, sizeof(*this));\
+        std::swap_ranges(start, start + sizeof(*this), reinterpret_cast<char *>(&other));\
+    }
 
 #define KH_COPY_DEC(t) \
     t(const t &other) {\
@@ -121,7 +125,7 @@ struct is_map<std::unordered_map<Key, T, Hash, Compare, Allocator>> {static cons
     t &operator=(t &&other) {\
         if(flags) std::free(flags);\
         if(keys) std::free(keys);\
-        std::memcpy(this, &other, sizeof(*this)); std::memset(&other, 0, sizeof(other));\
+        std::memcpy(reinterpret_cast<char *>(this), reinterpret_cast<char *>(&other), sizeof(*this)); std::memset(reinterpret_cast<char *>(&other), 0, sizeof(other));\
         return *this;\
     }
 
